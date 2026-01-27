@@ -8,6 +8,7 @@ class ClientManager:
     def __init__(self, service: GoogleSheetService):
         self.service = service
         self._clients_cache: list[Client] = []  # 記憶體快取
+        self._columns: list[str] = [] # 儲存資料表欄位順序
         self._is_initialized = False  # 標記位：判斷是否需要重新從雲端讀取
 
     def _ensure_data_loaded(self):
@@ -18,7 +19,20 @@ class ClientManager:
     def load(self):
         """一次性讀取所有資料並快取"""
         df = self.service.load_gsheet()
-        self._clients_cache = [Client(**row) for row in df.to_dict('records')]
+        # 確保我們先取得欄位順序，即使資料是空的，至少要有 Header
+        # 如果 df 是空的，可能會有問題，但假設至少有 Header
+        if not df.empty:
+            self._columns = df.columns.tolist()
+        elif hasattr(df, 'columns'):
+             self._columns = df.columns.tolist()
+        
+        self._clients_cache = []
+        for index, row in enumerate(df.to_dict('records')):
+            try:
+                self._clients_cache.append(Client(**row))
+            except Exception as e:
+                print(f"⚠️ 跳過無效資料 (第 {index + 1} 筆): {e}")
+
         self._is_initialized = True
         print("🌐 已完成雲端資料同步")
 
@@ -43,7 +57,14 @@ class ClientManager:
             new_client = Client(**client_data)
 
             # 2. 先更新至雲端
-            row_values = list(new_client.model_dump(by_alias=True).values())
+            # 使用 self._columns 確保順序與 Google Sheets 一致
+            dumped_data = new_client.model_dump(by_alias=True)
+            
+            # 使用明確的欄位順序清單，確保與 Google Sheet 欄位對應
+            # 這樣無論 self._columns 如何變化，新增的資料都能正確對應
+            expected_columns = ["名稱", "性別", "年紀", "地區", "地點", "可接受諮詢方式", "所屬學員", "預約狀態", "備註", "更新時間"]
+            row_values = [dumped_data.get(col, "") for col in expected_columns]
+                
             self.service.append_row(row_values)
 
             # 3. 再更新進快取
@@ -59,10 +80,16 @@ class ClientManager:
         gender: Optional[str] = None,
         area: Optional[str] = None,
         mode: Optional[str] = None,
-        min_age: Optional[int] = None,
-        max_age: Optional[int] = None
+        age_options: Optional[list[str]] = None
     ) -> list[Client]:
-        """根據條件進行篩選"""
+        """根據條件進行篩選
+        
+        Args:
+            gender: 性別篩選（單選）
+            area: 地區篩選（單選）
+            mode: 可接受諮詢方式篩選（單選）
+            age_options: 年紀區間篩選（複選列表，如 ["18-30歲", "31-40歲"]）
+        """
         self._ensure_data_loaded()
 
         results = []
@@ -72,8 +99,7 @@ class ClientManager:
                 (gender is None) or (client.gender == gender),
                 (area is None) or (client.area == area),
                 (mode is None) or (client.mode == mode),
-                (min_age is None) or (client.age >= min_age),
-                (max_age is None) or (client.age <= max_age),
+                (age_options is None) or (len(age_options) == 0) or (client.age in age_options),
             ]
 
             if all(criteria):
