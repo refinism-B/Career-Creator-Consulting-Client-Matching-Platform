@@ -2,16 +2,7 @@ import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 
-from src.config import DATA_PATH, CREDENTIAL_PATH
-
-
-def get_consulting_clients():
-    """
-    從 data/consulting_client.xlsx 讀取 client 分頁並回傳為 DataFrame。
-    """
-    file_path = DATA_PATH
-    df = pd.read_excel(file_path, sheet_name='client')
-    return df
+from src.config import CREDENTIAL_PATH
 
 
 class GoogleSheetService:
@@ -20,9 +11,9 @@ class GoogleSheetService:
             'https://www.googleapis.com/auth/spreadsheets',
             'https://www.googleapis.com/auth/drive'
         ]
-        self.creds = Credentials.from_service_account_file(CREDENTIAL_PATH, scopes=self.scopes)
+        self.creds = Credentials.from_service_account_file(
+            CREDENTIAL_PATH, scopes=self.scopes)
         self.client = gspread.authorize(self.creds)
-
 
     def load_gsheet(self):
         """
@@ -38,7 +29,6 @@ class GoogleSheetService:
 
         return df
 
-
     def save_gsheet(self, df: pd.DataFrame):
         """
         將輸入的 DataFrame 更新至 Google 雲端試算表 consulting_client 中的 client 分頁。
@@ -49,3 +39,14 @@ class GoogleSheetService:
         # 直接使用 update 覆蓋現有內容，避免先清除導致更新失敗時資料遺失
         data = [df.columns.values.tolist()] + df.values.tolist()
         worksheet.update(data)
+
+    def append_row(self, row_data: list):
+        """
+        將單一筆資料以 List 形式追加到試算表最末端
+        """
+        spreadsheet = self.client.open('consulting_client')
+        worksheet = spreadsheet.worksheet('client')
+        
+        # gspread 的 append_row 方法會自動尋找最後一行並填入
+        # value_input_option='USER_ENTERED' 可以確保日期字串被試算表辨識為日期格式
+        worksheet.append_row(row_data, value_input_option='USER_ENTERED')
