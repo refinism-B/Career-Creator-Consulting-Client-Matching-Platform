@@ -1,8 +1,7 @@
 import gspread
 import pandas as pd
+import streamlit as st
 from google.oauth2.service_account import Credentials
-
-from src.config import CREDENTIAL_PATH
 
 
 class GoogleSheetService:
@@ -11,16 +10,32 @@ class GoogleSheetService:
             'https://www.googleapis.com/auth/spreadsheets',
             'https://www.googleapis.com/auth/drive'
         ]
-        self.creds = Credentials.from_service_account_file(
-            CREDENTIAL_PATH, scopes=self.scopes)
+        # 從 st.secrets 讀取 Service Account 憑證
+        gsheets_config = st.secrets["connections"]["gsheets"]
+        creds_info = {
+            "type": gsheets_config["type"],
+            "project_id": gsheets_config["project_id"],
+            "private_key_id": gsheets_config["private_key_id"],
+            "private_key": gsheets_config["private_key"],
+            "client_email": gsheets_config["client_email"],
+            "client_id": gsheets_config["client_id"],
+            "auth_uri": gsheets_config["auth_uri"],
+            "token_uri": gsheets_config["token_uri"],
+            "auth_provider_x509_cert_url": gsheets_config["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": gsheets_config["client_x509_cert_url"],
+        }
+        self.creds = Credentials.from_service_account_info(
+            creds_info, scopes=self.scopes)
         self.client = gspread.authorize(self.creds)
+        # 儲存試算表 URL 供後續使用
+        self.spreadsheet_url = gsheets_config["spreadsheet"]
 
     def load_gsheet(self):
         """
         從 Google 雲端試算表讀取 consulting_client 的 client 分頁，並回傳為 DataFrame。
         """
-        # 開啟試算表並選取指定分頁
-        spreadsheet = self.client.open('consulting_client')
+        # 使用 URL 開啟試算表（比使用名稱更可靠）
+        spreadsheet = self.client.open_by_url(self.spreadsheet_url)
         worksheet = spreadsheet.worksheet('client')
 
         # 讀取所有內容並轉換為 DataFrame
@@ -33,7 +48,7 @@ class GoogleSheetService:
         """
         將輸入的 DataFrame 更新至 Google 雲端試算表 consulting_client 中的 client 分頁。
         """
-        spreadsheet = self.client.open('consulting_client')
+        spreadsheet = self.client.open_by_url(self.spreadsheet_url)
         worksheet = spreadsheet.worksheet('client')
 
         # 直接使用 update 覆蓋現有內容，避免先清除導致更新失敗時資料遺失
@@ -44,7 +59,7 @@ class GoogleSheetService:
         """
         將單一筆資料以 List 形式追加到試算表最末端
         """
-        spreadsheet = self.client.open('consulting_client')
+        spreadsheet = self.client.open_by_url(self.spreadsheet_url)
         worksheet = spreadsheet.worksheet('client')
         
         # gspread 的 append_row 方法會自動尋找最後一行並填入

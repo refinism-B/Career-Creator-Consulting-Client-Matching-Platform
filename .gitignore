@@ -213,3 +213,4 @@ test.ipynb
 /.vscode
 poetry.lock
 pyproject.toml
+/.streamlit
