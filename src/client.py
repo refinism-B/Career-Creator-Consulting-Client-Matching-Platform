@@ -29,7 +29,7 @@ class Client(BaseModel):
             return str(int(v)) if isinstance(v, int) or v.is_integer() else str(v)
         return v
     status: Literal["待預約",
-                    "已預約"] = Field(..., alias="預約狀態", description="諮詢對象目前是否已被預約")
+                    "已預約", "已取消"] = Field(..., alias="預約狀態", description="諮詢對象目前是否已被預約")
     remark: str = Field(default="", max_length=30,
                         alias="備註", description="其他補充說明")
     update_time: datetime = Field(

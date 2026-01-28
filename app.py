@@ -88,7 +88,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("系統操作")
-    if st.button("🔄 手動更新資料", help="重新從雲端讀取最新資料"):
+    if st.button("🔄 重新整理", help="重新從雲端讀取最新資料"):
         with st.spinner("資料讀取中..."):
             st.session_state.manager.load()
         st.success("資料已更新！")
@@ -213,8 +213,8 @@ def page_search_client():
             filter_area = st.selectbox(
                 "地區", ["全部", "北部（北北基桃竹）", "中部（苗中彰雲投）", "南部（嘉南高屏）", "東部（宜花東）", "離島"])
         with col3:
-            filter_status = st.selectbox("預約狀態", ["全部", "待預約", "已預約"])
-        
+            filter_status = st.selectbox("預約狀態", ["全部", "待預約", "已預約", "已取消"])
+
         col4, col5 = st.columns(2)
         with col4:
             filter_age_options = st.multiselect(
@@ -273,7 +273,7 @@ def page_search_client():
                 "名稱": st.column_config.TextColumn("名稱", disabled=True, help="名稱不可修改"),
                 "性別": st.column_config.SelectboxColumn("性別", options=["男", "女"], required=True),
                 "地區": st.column_config.SelectboxColumn("地區", options=["北部（北北基桃竹）", "中部（苗中彰雲投）", "南部（嘉南高屏）", "東部（宜花東）", "離島"], required=True),
-                "預約狀態": st.column_config.SelectboxColumn("預約狀態", options=["待預約", "已預約"], required=True),
+                "預約狀態": st.column_config.SelectboxColumn("預約狀態", options=["待預約", "已預約", "已取消"], required=True),
                 "年紀": st.column_config.SelectboxColumn("年紀", options=["18-30歲", "31-40歲", "41-50歲", "51-60歲", "61-70歲"], required=True),
                 "可接受諮詢方式": st.column_config.SelectboxColumn("可接受諮詢方式", options=["線上諮詢", "實體面談", "線上及實體皆可", "其他"]),
                 "更新時間": st.column_config.DatetimeColumn("更新時間", disabled=True, format="Yb-MM-DD HH:mm:ss"),
